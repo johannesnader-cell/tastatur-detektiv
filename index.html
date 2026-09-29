@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tastatur-Detektiv</title>
+<style>
+  :root{
+    --bg:#14161b;
+    --panel:#1b1e25;
+    --panel-2:#20242c;
+    --key-face:#262a33;
+    --key-face-hi:#323744;
+    --key-border:#3d434f;
+    --text-primary:#eef0f3;
+    --text-muted:#8b93a3;
+    --accent-funktion:#a78bfa;
+    --accent-buchstaben:#4fd1c5;
+    --accent-sonder:#60a5fa;
+    --accent-pfeil:#fb7185;
+    --accent-ziffer:#f2a340;
+    --good:#4fd18c;
+    --bad:#f2617a;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: radial-gradient(circle at 20% -10%, #1c2029 0%, var(--bg) 55%);
+    color:var(--text-primary);
+    font-family:var(--font-ui);
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding: 28px 14px 60px;
+  }
+  .app{
+    width:100%;
+    max-width:990px;
+  }
+  header.top{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+  }
+  header.top .brand{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  header.top h1{
+    font-size:22px;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  header.top .kicker{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+  }
+  .phase-pill{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+    border:1px solid var(--key-border);
+    border-radius:999px;
+    padding:6px 12px;
+    background:var(--panel);
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--key-border);
+    border-radius:10px;
+    padding:18px;
+    margin-bottom:16px;
+  }
+
+  /* ---------- Intro ---------- */
+  #screen-intro p{
+    color:var(--text-muted);
+    line-height:1.6;
+    font-size:15px;
+  }
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin:18px 0 22px;
+  }
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    color:var(--text-muted);
+    background:var(--panel-2);
+    border:1px solid var(--key-border);
+    padding:6px 10px 6px 8px;
+    border-radius:8px;
+  }
+  .swatch{
+    width:12px;height:12px;border-radius:3px;flex-shrink:0;
+  }
+  .sw-funktion{background:var(--accent-funktion);}
+  .sw-buchstaben{background:var(--accent-buchstaben);}
+  .sw-sonder{background:var(--accent-sonder);}
+  .sw-pfeil{background:var(--accent-pfeil);}
+  .sw-ziffer{background:var(--accent-ziffer);}
+
+  button.primary{
+    font-family:var(--font-ui);
+    font-weight:600;
+    font-size:15px;
+    color:#0e0f12;
+    background:linear-gradient(180deg,#ffffff,#dfe2e8);
+    border:none;
+    border-radius:8px;
+    padding:12px 22px;
+    cursor:pointer;
+    box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 6px 14px rgba(0,0,0,.35);
+  }
+  button.primary:active{transform:translateY(1px);}
+  button.primary:disabled{opacity:.4;cursor:default;}
+
+  button.ghost{
+    font-family:var(--font-ui);
+    font-weight:600;
+    font-size:14px;
+    color:var(--text-primary);
+    background:transparent;
+    border:1px solid var(--key-border);
+    border-radius:8px;
+    padding:10px 18px;
+    cursor:pointer;
+  }
+  button.ghost:hover{border-color:#5a6272;}
+
+  /* ---------- Keyboard ---------- */
+  .kb-wrap{
+    background:var(--panel-2);
+    border:1px solid var(--key-border);
+    border-radius:10px;
+    padding:16px 10px 18px;
+    overflow-x:auto;
+  }
+  .kb{
+    display:flex;
+    gap:10px;
+    min-width:640px;
+    position:relative;
+  }
+  .kb-main{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    flex:1;
+  }
+  .kb-row{
+    display:flex;
+    gap:6px;
+  }
+  .kb-cluster{
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+    gap:6px;
+  }
+  .arrow-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 34px);
+    grid-template-rows:repeat(2, 34px);
+    gap:6px;
+  }
+  .arrow-grid .key{width:34px;height:34px;padding:0;}
+  .arrow-up{grid-column:2;grid-row:1;}
+  .arrow-left{grid-column:1;grid-row:2;}
+  .arrow-down{grid-column:2;grid-row:2;}
+  .arrow-right{grid-column:3;grid-row:2;}
+
+  .numpad{
+    display:grid;
+    grid-template-columns:repeat(4, 34px);
+    gap:6px;
+  }
+  .numpad .key{width:34px;height:34px;padding:0;}
+
+  .key{
+    position:relative;
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-primary);
+    background:var(--key-face);
+    border:1px solid var(--key-border);
+    border-radius:5px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 2px 0 rgba(0,0,0,.4);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 6px;
+    height:34px;
+    min-width:34px;
+    transition: background .35s ease, box-shadow .35s ease, transform .12s ease;
+    cursor:default;
+    user-select:none;
+  }
+  .key.wide-tab{width:56px;}
+  .key.wide-caps{width:66px;}
+  .key.wide-shift{width:74px;}
+  .key.wide-ctrl{width:52px;}
+  .key.wide-alt{width:44px;}
+  .key.wide-space{flex:1;}
+  .key.wide-bksp{width:64px;justify-content:flex-end;padding-right:8px;}
+  .key.wide-enter{width:64px;}
+  .key.narrow{width:30px;}
+  .fkey{width:38px;}
+  .esc-gap{margin-right:14px;}
+  .fgap{width:10px;}
+
+  .key[data-zone="funktionstasten"].lit{background:color-mix(in srgb, var(--accent-funktion) 55%, var(--key-face)); box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 0 0 1px var(--accent-funktion);}
+  .key[data-zone="buchstabenblock"].lit{background:color-mix(in srgb, var(--accent-buchstaben) 40%, var(--key-face)); box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 0 0 1px var(--accent-buchstaben);}
+  .key[data-zone="sondertasten"].lit{background:color-mix(in srgb, var(--accent-sonder) 45%, var(--key-face)); box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 0 0 1px var(--accent-sonder);}
+  .key[data-zone="pfeiltasten"].lit{background:color-mix(in srgb, var(--accent-pfeil) 45%, var(--key-face)); box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 0 0 1px var(--accent-pfeil);}
+  .key[data-zone="zifferblock"].lit{background:color-mix(in srgb, var(--accent-ziffer) 50%, var(--key-face)); box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 0 0 1px var(--accent-ziffer);}
+
+  .key.shake{animation:shake .34s ease;}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    25%{transform:translateX(-4px);}
+    75%{transform:translateX(4px);}
+  }
+
+  .key.pulse-target{
+    box-shadow: 0 0 0 3px #ffffff, 0 0 0 7px rgba(255,255,255,.3), 0 4px 14px rgba(0,0,0,.5) !important;
+    z-index:2;
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.12);}
+  }
+
+  /* ---------- Round 1 chip tray ---------- */
+  .instructions{
+    font-size:14px;
+    color:var(--text-muted);
+    margin:0 0 14px;
+    line-height:1.55;
+  }
+  .chip-tray{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:18px;
+  }
+  .chip{
+    font-family:var(--font-ui);
+    font-weight:600;
+    font-size:14px;
+    padding:10px 16px;
+    border-radius:8px;
+    border:1px solid var(--key-border);
+    background:var(--panel-2);
+    color:var(--text-primary);
+    cursor:pointer;
+  }
+  .chip[data-zone="funktionstasten"]{border-color:var(--accent-funktion);}
+  .chip[data-zone="buchstabenblock"]{border-color:var(--accent-buchstaben);}
+  .chip[data-zone="sondertasten"]{border-color:var(--accent-sonder);}
+  .chip[data-zone="pfeiltasten"]{border-color:var(--accent-pfeil);}
+  .chip[data-zone="zifferblock"]{border-color:var(--accent-ziffer);}
+  .chip.selected{
+    background:var(--text-primary);
+    color:#0e0f12;
+  }
+  .chip.done{
+    opacity:.35;
+    cursor:default;
+    text-decoration:line-through;
+  }
+  .r1-status{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+    margin-top:14px;
+    min-height:16px;
+  }
+
+  /* ---------- Round 2 ---------- */
+  .readout{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-bottom:16px;
+  }
+  .readout .qcount{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+  }
+  .progress-bar{
+    flex:1;
+    height:6px;
+    background:var(--panel-2);
+    border-radius:3px;
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--accent-buchstaben), var(--accent-sonder));
+    width:0%;
+    transition:width .3s ease;
+  }
+  .answers{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+    gap:10px;
+    margin-top:18px;
+  }
+  .answer-btn{
+    font-family:var(--font-ui);
+    font-weight:600;
+    font-size:14px;
+    padding:14px 12px;
+    border-radius:8px;
+    border:1px solid var(--key-border);
+    background:var(--panel-2);
+    color:var(--text-primary);
+    cursor:pointer;
+    text-align:left;
+  }
+  .answer-btn:hover:not(:disabled){border-color:#5a6272;}
+  .answer-btn.correct{border-color:var(--good); background:color-mix(in srgb, var(--good) 18%, var(--panel-2)); color:var(--good);}
+  .answer-btn.incorrect{border-color:var(--bad); background:color-mix(in srgb, var(--bad) 18%, var(--panel-2)); color:var(--bad);}
+  .answer-btn:disabled{cursor:default;}
+
+  .feedback-line{
+    margin-top:14px;
+    font-size:14px;
+    min-height:20px;
+    font-weight:600;
+  }
+  .feedback-line.good{color:var(--good);}
+  .feedback-line.bad{color:var(--bad);}
+
+  .actions-row{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:18px;
+  }
+
+  /* ---------- Result ---------- */
+  #screen-result .score-big{
+    font-family:var(--font-mono);
+    font-size:44px;
+    font-weight:700;
+    margin:6px 0 4px;
+  }
+  #screen-result .score-label{
+    color:var(--text-muted);
+    font-size:14px;
+    margin-bottom:16px;
+  }
+  #screen-result .msg{
+    font-size:15px;
+    line-height:1.6;
+    color:var(--text-primary);
+    margin-bottom:18px;
+  }
+
+  .hidden{display:none !important;}
+
+  @media (max-width:520px){
+    header.top h1{font-size:19px;}
+    .card{padding:16px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">
+      <h1>Tastatur-Detektiv</h1>
+      <span class="kicker">IT · Textverarbeitung · Erarbeitung I</span>
+    </div>
+    <div class="phase-pill" id="phasePill">Vorbereitung</div>
+  </header>
+
+  <!-- INTRO -->
+  <section class="card" id="screen-intro">
+    <p>Bevor ihr am PC schreibt, lernt ihr eure Tastatur genauer kennen. Das Spiel hat zwei Runden:</p>
+    <p><strong style="color:var(--text-primary)">Runde 1 – Bereiche zuordnen:</strong> Ordnet die fünf Begriffe den passenden Bereichen auf der Tastatur zu.<br>
+    <strong style="color:var(--text-primary)">Runde 2 – Tasten erkennen:</strong> Eine einzelne Taste blinkt auf – entscheidet, zu welchem Bereich sie gehört.</p>
+    <div class="legend">
+      <span class="legend-item"><span class="swatch sw-funktion"></span>Funktionstasten</span>
+      <span class="legend-item"><span class="swatch sw-buchstaben"></span>Buchstabenblock</span>
+      <span class="legend-item"><span class="swatch sw-sonder"></span>Sondertasten</span>
+      <span class="legend-item"><span class="swatch sw-pfeil"></span>Pfeiltasten</span>
+      <span class="legend-item"><span class="swatch sw-ziffer"></span>Zifferblock</span>
+    </div>
+    <button class="primary" id="btnStart">Los geht's</button>
+  </section>
+
+  <!-- ROUND 1 -->
+  <section class="card hidden" id="screen-round1">
+    <p class="instructions">Tippt zuerst auf einen Begriff unten, dann auf eine Taste in dem Bereich, zu dem er gehört. Alle fünf Bereiche müssen richtig zugeordnet werden.</p>
+    <div class="kb-wrap" id="kbWrapR1"></div>
+    <div class="chip-tray" id="chipTray"></div>
+    <div class="r1-status" id="r1Status"></div>
+    <div class="actions-row">
+      <button class="primary hidden" id="btnToRound2">Weiter zu Runde 2</button>
+    </div>
+  </section>
+
+  <!-- ROUND 2 -->
+  <section class="card hidden" id="screen-round2">
+    <div class="readout">
+      <span class="qcount" id="qCount">Frage 1 / 12</span>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+    <p class="instructions">Die markierte Taste blinkt auf der Tastatur. Zu welchem Bereich gehört sie?</p>
+    <div class="kb-wrap" id="kbWrapR2"></div>
+    <div class="answers" id="answers"></div>
+    <div class="feedback-line" id="feedbackLine"></div>
+    <div class="actions-row">
+      <button class="primary hidden" id="btnNextQuestion">Nächste Taste</button>
+    </div>
+  </section>
+
+  <!-- RESULT -->
+  <section class="card hidden" id="screen-result">
+    <div class="score-big" id="scoreBig">0 / 12</div>
+    <div class="score-label">richtige Antworten in Runde 2</div>
+    <p class="msg" id="resultMsg"></p>
+    <button class="ghost" id="btnRestart">Nochmal spielen</button>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var ZONE_NAMES = {
+    funktionstasten: "Funktionstasten",
+    buchstabenblock: "Buchstabenblock",
+    sondertasten: "Sondertasten (Leertaste & Co.)",
+    pfeiltasten: "Pfeiltasten",
+    zifferblock: "Zifferblock"
+  };
+  var ZONE_ORDER = ["funktionstasten","buchstabenblock","sondertasten","pfeiltasten","zifferblock"];
+
+  // ---------- Keyboard building ----------
+  function key(label, zone, id, extraClass){
+    var d = document.createElement("div");
+    d.className = "key" + (extraClass ? " " + extraClass : "");
+    d.dataset.zone = zone;
+    if (id) d.dataset.id = id;
+    d.textContent = label;
+    return d;
+  }
+
+  function row(){
+    var r = document.createElement("div");
+    r.className = "kb-row";
+    for (var i=0;i<arguments.length;i++) r.appendChild(arguments[i]);
+    return r;
+  }
+
+  function gap(width){
+    var g = document.createElement("div");
+    g.style.width = width + "px";
+    g.style.flexShrink = "0";
+    return g;
+  }
+
+  function buildKeyboard(){
+    var kb = document.createElement("div");
+    kb.className = "kb";
+
+    // --- main block ---
+    var main = document.createElement("div");
+    main.className = "kb-main";
+
+    // function row
+    var esc = key("Esc","funktionstasten","key-esc","fkey esc-gap");
+    var fRow = row(esc);
+    var fLabels = ["F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12"];
+    fLabels.forEach(function(l, i){
+      fRow.appendChild(key(l,"funktionstasten","key-"+l.toLowerCase(),"fkey"));
+      if (i===3 || i===7) fRow.appendChild(gap(10));
+    });
+    main.appendChild(fRow);
+
+    // number row
+    var r1 = row(
+      key("^","buchstabenblock"),
+      key("1","buchstabenblock"), key("2","buchstabenblock"), key("3","buchstabenblock"),
+      key("4","buchstabenblock"), key("5","buchstabenblock"), key("6","buchstabenblock"),
+      key("7","buchstabenblock","key-row7"), key("8","buchstabenblock"), key("9","buchstabenblock"),
+      key("0","buchstabenblock"), key("ß","buchstabenblock"), key("´","buchstabenblock"),
+      key("⌫","buchstabenblock","key-backspace","wide-bksp")
+    );
+    main.appendChild(r1);
+
+    // QWERTZ row
+    var r2 = row(
+      key("Tab","buchstabenblock","key-tab","wide-tab"),
+      key("Q","buchstabenblock","key-Q"), key("W","buchstabenblock"), key("E","buchstabenblock"),
+      key("R","buchstabenblock"), key("T","buchstabenblock"), key("Z","buchstabenblock"),
+      key("U","buchstabenblock"), key("I","buchstabenblock"), key("O","buchstabenblock"),
+      key("P","buchstabenblock"), key("Ü","buchstabenblock"), key("+","buchstabenblock")
+    );
+    main.appendChild(r2);
+
+    // ASDF row
+    var r3 = row(
+      key("Feststell","buchstabenblock","key-capslock","wide-caps"),
+      key("A","buchstabenblock"), key("S","buchstabenblock"), key("D","buchstabenblock"),
+      key("F","buchstabenblock"), key("G","buchstabenblock"), key("H","buchstabenblock"),
+      key("J","buchstabenblock"), key("K","buchstabenblock"), key("L","buchstabenblock"),
+      key("Ö","buchstabenblock"), key("Ä","buchstabenblock"), key("#","buchstabenblock"),
+      key("Enter","buchstabenblock","key-enter","wide-enter")
+    );
+    main.appendChild(r3);
+
+    // YXCV row (shift = sondertasten)
+    var r4 = row(
+      key("⇧","sondertasten","key-shift-l","wide-shift"),
+      key("Y","buchstabenblock"), key("X","buchstabenblock"), key("C","buchstabenblock"),
+      key("V","buchstabenblock"), key("B","buchstabenblock"), key("N","buchstabenblock"),
+      key("M","buchstabenblock"), key(",","buchstabenblock","key-comma"), key(".","buchstabenblock"),
+      key("-","buchstabenblock"),
+      key("⇧","sondertasten","key-shift-r","wide-shift")
+    );
+    main.appendChild(r4);
+
+    // bottom row
+    var r5 = row(
+      key("Strg","sondertasten","key-strg-l","wide-ctrl"),
+      key("Win","sondertasten","key-win-l","wide-alt"),
+      key("Alt","sondertasten","key-alt-l","wide-alt"),
+      key("Leertaste","sondertasten","key-leertaste","wide-space"),
+      key("AltGr","sondertasten","key-altgr","wide-alt"),
+      key("Menü","sondertasten","key-menu","wide-alt"),
+      key("Strg","sondertasten","key-strg-r","wide-ctrl")
+    );
+    main.appendChild(r5);
+
+    kb.appendChild(main);
+
+    // --- arrow cluster ---
+    var arrowCluster = document.createElement("div");
+    arrowCluster.className = "kb-cluster";
+    var spacer = document.createElement("div");
+    spacer.style.height = "40px";
+    arrowCluster.appendChild(spacer);
+    var ag = document.createElement("div");
+    ag.className = "arrow-grid";
+    var up = key("↑","pfeiltasten","key-arrow-up","arrow-up");
+    var left = key("←","pfeiltasten","key-arrow-left","arrow-left");
+    var down = key("↓","pfeiltasten","key-arrow-down","arrow-down");
+    var right = key("→","pfeiltasten","key-arrow-right","arrow-right");
+    ag.appendChild(up); ag.appendChild(left); ag.appendChild(down); ag.appendChild(right);
+    arrowCluster.appendChild(ag);
+    kb.appendChild(arrowCluster);
+
+    // --- numpad ---
+    var numWrap = document.createElement("div");
+    numWrap.className = "kb-cluster";
+    var npTop = document.createElement("div");
+    npTop.style.height = "40px";
+    numWrap.appendChild(npTop);
+    var np = document.createElement("div");
+    np.className = "numpad";
+    var numKeys = [
+      ["Num","key-numlock"], ["/","key-num-div"], ["*","key-num-mul"], ["-","key-num-sub"],
+      ["7","key-num7"], ["8","key-num8"], ["9","key-num9"], ["+","key-num-add"],
+      ["4","key-num4"], ["5","key-num5"], ["6","key-num6"], ["↵","key-num-enter1"],
+      ["1","key-num1"], ["2","key-num2"], ["3","key-num3"], ["↵","key-num-enter2"],
+      ["0","key-num0a"], ["0","key-num0b"], [".","key-num-dot"], ["↵","key-num-enter3"]
+    ];
+    numKeys.forEach(function(pair){
+      np.appendChild(key(pair[0],"zifferblock",pair[1]));
+    });
+    numWrap.appendChild(np);
+    kb.appendChild(numWrap);
+
+    return kb;
+  }
+
+  // ---------- App state ----------
+  var screens = {
+    intro: document.getElementById("screen-intro"),
+    round1: document.getElementById("screen-round1"),
+    round2: document.getElementById("screen-round2"),
+    result: document.getElementById("screen-result")
+  };
+  var phasePill = document.getElementById("phasePill");
+
+  function showScreen(name, label){
+    Object.keys(screens).forEach(function(k){
+      screens[k].classList.toggle("hidden", k !== name);
+    });
+    phasePill.textContent = label;
+  }
+
+  // ---------- Round 1 ----------
+  var kbR1Container = document.getElementById("kbWrapR1");
+  var kbR1 = null;
+  var selectedChipZone = null;
+  var assignedZones = {};
+
+  function initRound1(){
+    kbR1Container.innerHTML = "";
+    kbR1 = buildKeyboard();
+    kbR1Container.appendChild(kbR1);
+    assignedZones = {};
+    selectedChipZone = null;
+
+    var tray = document.getElementById("chipTray");
+    tray.innerHTML = "";
+    var shuffled = ZONE_ORDER.slice().sort(function(){return Math.random()-0.5;});
+    shuffled.forEach(function(zone){
+      var chip = document.createElement("button");
+      chip.className = "chip";
+      chip.dataset.zone = zone;
+      chip.textContent = ZONE_NAMES[zone];
+      chip.addEventListener("click", function(){
+        if (chip.classList.contains("done")) return;
+        Array.prototype.forEach.call(tray.querySelectorAll(".chip"), function(c){ c.classList.remove("selected"); });
+        chip.classList.add("selected");
+        selectedChipZone = zone;
+        document.getElementById("r1Status").textContent = "Ausgewählt: " + ZONE_NAMES[zone] + " — tippt jetzt auf eine passende Taste.";
+      });
+      tray.appendChild(chip);
+    });
+
+    document.getElementById("r1Status").textContent = "Wählt zuerst einen Begriff aus.";
+    document.getElementById("btnToRound2").classList.add("hidden");
+
+    kbR1.addEventListener("click", function(e){
+      var k = e.target.closest(".key");
+      if (!k) return;
+      if (!selectedChipZone) {
+        document.getElementById("r1Status").textContent = "Wählt zuerst unten einen Begriff aus.";
+        return;
+      }
+      var zone = k.dataset.zone;
+      if (zone === selectedChipZone){
+        if (!assignedZones[zone]){
+          assignedZones[zone] = true;
+          lightZone(kbR1, zone);
+          var chipEl = tray.querySelector('.chip[data-zone="'+zone+'"]');
+          chipEl.classList.remove("selected");
+          chipEl.classList.add("done");
+          selectedChipZone = null;
+          document.getElementById("r1Status").textContent = "Richtig! " + ZONE_NAMES[zone] + " ist markiert.";
+          checkRound1Done();
+        }
+      } else {
+        k.classList.add("shake");
+        setTimeout(function(){ k.classList.remove("shake"); }, 340);
+        document.getElementById("r1Status").textContent = "Das ist nicht der richtige Bereich. Versucht es nochmal.";
+      }
+    });
+  }
+
+  function lightZone(kbEl, zone){
+    Array.prototype.forEach.call(kbEl.querySelectorAll('.key[data-zone="'+zone+'"]'), function(k){
+      k.classList.add("lit");
+    });
+  }
+
+  function checkRound1Done(){
+    if (Object.keys(assignedZones).length === ZONE_ORDER.length){
+      document.getElementById("r1Status").textContent = "Alle Bereiche richtig zugeordnet! Stark gemacht.";
+      document.getElementById("btnToRound2").classList.remove("hidden");
+    }
+  }
+
+  // ---------- Round 2 ----------
+  var QUESTIONS = [
+    {id:"key-f5", zone:"funktionstasten"},
+    {id:"key-esc", zone:"funktionstasten"},
+    {id:"key-num7", zone:"zifferblock"},
+    {id:"key-numlock", zone:"zifferblock"},
+    {id:"key-arrow-up", zone:"pfeiltasten"},
+    {id:"key-arrow-left", zone:"pfeiltasten"},
+    {id:"key-shift-l", zone:"sondertasten"},
+    {id:"key-leertaste", zone:"sondertasten"},
+    {id:"key-strg-r", zone:"sondertasten"},
+    {id:"key-Q", zone:"buchstabenblock"},
+    {id:"key-capslock", zone:"buchstabenblock"},
+    {id:"key-comma", zone:"buchstabenblock"}
+  ];
+
+  var kbR2Container = document.getElementById("kbWrapR2");
+  var kbR2 = null;
+  var qOrder = [];
+  var qIndex = 0;
+  var score = 0;
+  var answeredCurrent = false;
+
+  function initRound2(){
+    kbR2Container.innerHTML = "";
+    kbR2 = buildKeyboard();
+    kbR2Container.appendChild(kbR2);
+    // reflect round-1 zone colors as a passive legend
+    ZONE_ORDER.forEach(function(zone){ lightZone(kbR2, zone); });
+
+    qOrder = QUESTIONS.slice().sort(function(){return Math.random()-0.5;});
+    qIndex = 0;
+    score = 0;
+    document.getElementById("btnNextQuestion").classList.add("hidden");
+    askQuestion();
+  }
+
+  function askQuestion(){
+    answeredCurrent = false;
+    var q = qOrder[qIndex];
+    document.getElementById("qCount").textContent = "Frage " + (qIndex+1) + " / " + qOrder.length;
+    document.getElementById("progressFill").style.width = Math.round((qIndex/qOrder.length)*100) + "%";
+    document.getElementById("feedbackLine").textContent = "";
+    document.getElementById("feedbackLine").className = "feedback-line";
+    document.getElementById("btnNextQuestion").classList.add("hidden");
+
+    Array.prototype.forEach.call(kbR2.querySelectorAll(".key"), function(k){ k.classList.remove("pulse-target"); });
+    var targetKey = kbR2.querySelector('[data-id="'+q.id+'"]');
+    if (targetKey) targetKey.classList.add("pulse-target");
+
+    var answersEl = document.getElementById("answers");
+    answersEl.innerHTML = "";
+    var opts = ZONE_ORDER.slice().sort(function(){return Math.random()-0.5;});
+    opts.forEach(function(zone){
+      var btn = document.createElement("button");
+      btn.className = "answer-btn";
+      btn.textContent = ZONE_NAMES[zone];
+      btn.addEventListener("click", function(){
+        if (answeredCurrent) return;
+        answeredCurrent = true;
+        var correct = zone === q.zone;
+        if (correct){
+          score++;
+          btn.classList.add("correct");
+          document.getElementById("feedbackLine").textContent = "Richtig!";
+          document.getElementById("feedbackLine").className = "feedback-line good";
+        } else {
+          btn.classList.add("incorrect");
+          var correctBtn = Array.prototype.find.call(answersEl.querySelectorAll(".answer-btn"), function(b){ return b.textContent === ZONE_NAMES[q.zone]; });
+          if (correctBtn) correctBtn.classList.add("correct");
+          document.getElementById("feedbackLine").textContent = "Nicht ganz — richtig wäre: " + ZONE_NAMES[q.zone];
+          document.getElementById("feedbackLine").className = "feedback-line bad";
+        }
+        Array.prototype.forEach.call(answersEl.querySelectorAll(".answer-btn"), function(b){ b.disabled = true; });
+        document.getElementById("btnNextQuestion").classList.remove("hidden");
+      });
+      answersEl.appendChild(btn);
+    });
+  }
+
+  document.getElementById("btnNextQuestion").addEventListener("click", function(){
+    qIndex++;
+    if (qIndex >= qOrder.length){
+      document.getElementById("progressFill").style.width = "100%";
+      showResult();
+    } else {
+      askQuestion();
+    }
+  });
+
+  function showResult(){
+    document.getElementById("scoreBig").textContent = score + " / " + qOrder.length;
+    var msg;
+    if (score >= 11) msg = "Hervorragend! Du kennst dich mit der Tastatur richtig gut aus.";
+    else if (score >= 8) msg = "Gut gemacht! Die meisten Bereiche sitzen schon sicher.";
+    else if (score >= 5) msg = "Solider Start — schaut euch die Bereiche noch einmal gemeinsam an.";
+    else msg = "Kein Problem — Übung macht den Meister. Spielt gern noch eine Runde.";
+    document.getElementById("resultMsg").textContent = msg;
+    showScreen("result", "Ergebnis");
+  }
+
+  // ---------- Navigation ----------
+  document.getElementById("btnStart").addEventListener("click", function(){
+    initRound1();
+    showScreen("round1", "Runde 1 · Bereiche zuordnen");
+  });
+
+  document.getElementById("btnToRound2").addEventListener("click", function(){
+    initRound2();
+    showScreen("round2", "Runde 2 · Tasten erkennen");
+  });
+
+  document.getElementById("btnRestart").addEventListener("click", function(){
+    showScreen("intro", "Vorbereitung");
+  });
+
+})();
+</script>
+</body>
+</html>
